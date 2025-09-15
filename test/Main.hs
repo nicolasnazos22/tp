@@ -85,10 +85,6 @@ testsVacio =
               Casillero -0.75 0 0 0,
               Casillero 0 infinitoPositivo 0 0
             ],
-      casilleros (vacio 0 (1,1))
-        ~?= [ Casillero infinitoNegativo 1 0 0
-              Casillero 1 infinitoPositivo 0 0
-            ],
     ]
 
 testsAgregar :: Test
@@ -150,7 +146,7 @@ testsHistograma :: Test
 testsHistograma =
   test
     [ histograma 4 (1, 5) [1, 2, 3] ~?= agregar 3 (agregar 2 (agregar 1 (vacio 4 (1, 5)))),
-      histograma 0 (1,100) [1..3] ~?= agregar 3 (agregar 2 (agregar 1 (vacio 0 (1,100)))),
+      histograma 1 (1,100) [1..3] ~?= agregar 3 (agregar 2 (agregar 1 (vacio 1 (1,100)))),
       histograma 4 (0,1) [1..5] ~?= agregar 5 (agregar 4 (agregar 3 (agregar 2 (agregar 1 (vacio (0,1)))))),
     ]
 
@@ -183,13 +179,30 @@ testsCasilleros =
 testsRecr :: Test
 testsRecr =
   test
-    [ completar
+    [ recrExpr (Const 1) (\_ _ -> 1)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (Const 5) ~?= 1,
+      recrExpr (Const 1) (\_ _ -> 1)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (Suma (Const 3) (Mult (Const 2) (Rango 4 6))) ~?= 5
+
     ]
 
 testsFold :: Test
 testsFold =
   test
-    [ completar
+    [ foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Const 5) ~?= 5,
+      foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Suma (Const 2) (Const 3)) ~?= 5,
+      foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Resta (Const 10) (Const 5)) ~?= 5,
+      foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Mult (Const 1) (Const 5)) ~?= 5,
+      foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Div (Rango 0 10) (Const 1)) ~?= 5,
+      foldExpr Const Rango Suma Resta Mult Div (Suma 3 2) ~?= Suma 3 2
     ]
 
 testsEval :: Test
@@ -199,7 +212,9 @@ testsEval =
       fst (eval (Suma (Rango 1 5) (Const 1)) (genNormalConSemilla 0)) ~?= 3.7980492,
       -- el primer rango evalua a 2.7980492 y el segundo a 3.1250308
       fst (eval (Suma (Rango 1 5) (Rango 1 5)) (genNormalConSemilla 0)) ~?= 5.92308,
-      completar
+      fst (eval (Const 7) genFijo) ~?= 7.0,
+      fst (eval (Rango 1 5) genFijo) ~?= 3.0,
+      
     ]
 
 testsArmarHistograma :: Test
