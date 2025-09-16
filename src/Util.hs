@@ -3,7 +3,7 @@ module Util where
 -- | @alinearDerecha n s@ agrega espacios a la izquierda de @s@ hasta que su longitud sea @n@.
 -- Si @s@ ya tiene longitud @>= n@, devuelve @s@.
 alinearDerecha :: Int -> String -> String
-alinearDerecha n s = if length s == n then s -- si la longitud del string es n entonces no necesitamos hacer nada
+alinearDerecha n s = if length s >= n then s -- si la longitud del string es n entonces no necesitamos hacer nada
                      else replicate (n- length s) ' ' ++ s -- usamos replicate para crear lista de espacios y la concatenamos con el string. La cantidad de espacios sera n - la longitud del string s
 -- us
 

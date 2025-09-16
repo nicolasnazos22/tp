@@ -41,7 +41,9 @@ testsAlinearDerecha =
   test
     [ alinearDerecha 6 "hola" ~?= "  hola",
       alinearDerecha 10 "incierticalc" ~?= "incierticalc",
-      completar
+      alinearDerecha 20 "test n > s" ~?= "test n > s",
+      alinearDerecha 20 "  espaciosDelante" ~?= "     espaciosDelante",
+      alinearDerecha 20 "espaciosDetras  " ~?= "    espaciosDetras  ",
     ]
 
 testsActualizarElem :: Test
@@ -49,7 +51,9 @@ testsActualizarElem =
   test
     [ actualizarElem 0 (+ 10) [1, 2, 3] ~?= [11, 2, 3],
       actualizarElem 1 (+ 10) [1, 2, 3] ~?= [1, 12, 3],
-      completar
+      actualizarElem -2 (+ 10) [1, 2, 3] ~?= [1, 2, 3],
+      actualizarElem 4 (+ 10) [1, 2, 3] ~?= [1,2,3],
+      actualizarElem 30 (+ 10) [1..29] ~?= [1..28]++[39], 
     ]
 
 testsVacio :: Test
@@ -67,12 +71,27 @@ testsVacio =
               Casillero 4 6 0 0,
               Casillero 6 infinitoPositivo 0 0
             ],
-      completar
+      casilleros (vacio 2 (2,10))
+        ~?= [ Casillero infinitoNegativo 2 0 0,
+              Casillero 2 6 0 0,
+              Casillero 6 10 0 0,
+              Casillero 10 infinitoPositivo 0 0
+            ],
+      casilleros (vacio 4 (-3,0))
+        ~?= [ Casillero infinitoNegativo -3 0 0,
+              Casillero -3 -2.25 0 0,
+              Casillero -2.25 -1.5 0 0,
+              Casillero -1.5 -0.75 0 0,
+              Casillero -0.75 0 0 0,
+              Casillero 0 infinitoPositivo 0 0
+            ],
     ]
 
 testsAgregar :: Test
 testsAgregar =
   let h0 = vacio 3 (0, 6)
+  let h1 = vacio 2 (2,10)
+  let h2 = vacio 4 (-3,0)
    in test
         [ casilleros (agregar 0 h0)
             ~?= [ Casillero infinitoNegativo 0 0 0,
@@ -95,14 +114,40 @@ testsAgregar =
                   Casillero 4 6 0 0,
                   Casillero 6 infinitoPositivo 0 0
                 ],
-          completar
+          casilleros (agregar (-1) h1)
+            ~?= [ Casillero infinitoNegativo 2 1 100,
+                  Casillero 2 6 0 0,
+                  Casillero 6 10 0 0,
+                  Casillero 10 infinitoPositivo 0 0 
+               ],
+          casilleros (agregar (1) (agregar (2) h1)) --agrego 2
+            ~?= [ Casillero infinitoNegativo 2 1 50,
+                  Casillero 2 6 1 50,
+                  Casillero 6 10 0 0,
+                  Casillero 10 infinitoPositivo 0 0
+                ],
+          casilleros (agregar (-2.5) (agregar (-2) (agregar (-1) (agregar (0.5) h2)))) --agrego uno en cada casillero
+            ~?= [ Casillero infinitoNegativo -3 0 0,
+                  Casillero -3 -2.25 1 25,
+                  Casillero -2.25 -1.5 1 25,
+                  Casillero -1.5 -0.75 1 25,
+                  Casillero -0.75 0 1 25,
+                  Casillero 0 infinitoPositivo 0 0
+                ],
+          casilleros (agregar (1) (agregar (12) h1)) --Agrego en extremos
+            ~?= [ Casillero infinitoNegativo 2 1 50,
+                  Casillero 2 6 0 0,
+                  Casillero 6 10 0 0,
+                  Casillero 10 infinitoPositivo 1 50
+                ],
         ]
 
 testsHistograma :: Test
 testsHistograma =
   test
     [ histograma 4 (1, 5) [1, 2, 3] ~?= agregar 3 (agregar 2 (agregar 1 (vacio 4 (1, 5)))),
-      completar
+      histograma 1 (1,100) [1..3] ~?= agregar 3 (agregar 2 (agregar 1 (vacio 1 (1,100)))),
+      histograma 4 (0,1) [1..5] ~?= agregar 5 (agregar 4 (agregar 3 (agregar 2 (agregar 1 (vacio (0,1)))))),
     ]
 
 testsCasilleros :: Test
@@ -122,19 +167,42 @@ testsCasilleros =
               Casillero 4.0 6.0 0 0.0,
               Casillero 6.0 infinitoPositivo 0 0.0
             ],
-      completar
+      casilleros (agregar 6 (agregar 5 (agregar 3 (agregar 1 (agregar -1 (vacio 3 (0,6)))))))
+        ~?= [ Casillero infinitoNegativo 0.0 1 20,
+              Casillero 0.0 2.0 1 20,
+              Casillero 2.0 4.0 1 20,
+              Casillero 4.0 6.0 1 20,
+              Casillero 6.0 infinitoPositivo 1 20
+            ],
     ]
 
 testsRecr :: Test
 testsRecr =
   test
-    [ completar
+    [ recrExpr (Const 1) (\_ _ -> 1)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (Const 5) ~?= 1,
+      recrExpr (Const 1) (\_ _ -> 1)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (\_ r1 _ r2 -> 1 + r1 + r2)
+               (Suma (Const 3) (Mult (Const 2) (Rango 4 6))) ~?= 5
+
     ]
 
 testsFold :: Test
 testsFold =
   test
-    [ completar
+    [ foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Const 5) ~?= 5,
+      foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Suma (Const 2) (Const 3)) ~?= 5,
+      foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Resta (Const 10) (Const 5)) ~?= 5,
+      foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Mult (Const 1) (Const 5)) ~?= 5,
+      foldExpr (\x -> x) (\x y -> (x+y)/2) (+) (-) (*) (/) (Div (Rango 0 10) (Const 1)) ~?= 5,
+      foldExpr Const Rango Suma Resta Mult Div (Suma 3 2) ~?= Suma 3 2
     ]
 
 testsEval :: Test
@@ -144,7 +212,9 @@ testsEval =
       fst (eval (Suma (Rango 1 5) (Const 1)) (genNormalConSemilla 0)) ~?= 3.7980492,
       -- el primer rango evalua a 2.7980492 y el segundo a 3.1250308
       fst (eval (Suma (Rango 1 5) (Rango 1 5)) (genNormalConSemilla 0)) ~?= 5.92308,
-      completar
+      fst (eval (Const 7) genFijo) ~?= 7.0,
+      fst (eval (Rango 1 5) genFijo) ~?= 3.0,
+      
     ]
 
 testsArmarHistograma :: Test
