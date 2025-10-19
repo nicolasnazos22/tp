@@ -36,19 +36,23 @@ data Histograma = Histograma Float Float [Int]
 vacio :: Int -> (Float, Float) -> Histograma
 vacio n (l, u) =  Histograma l u (replicate (n + 2) 0) --usa
 -- | Agrega un valor al histograma.
+
 agregar :: Float -> Histograma -> Histograma
-agregar x (Histograma l u lista) =
-  if x < l
-    then Histograma l u (actualizarElem 0 (+1) lista)       -- por debajo del rango, outliers inferiores
-  else if x >= u
-    then Histograma l u (actualizarElem (length lista - 1) (+1) lista)  -- el ultimo casillero es para outliers por encima del rango
-  else Histograma l u (actualizarElem indice (+1) lista)   -- dentro del rango
+agregar x (Histograma l u lista) 
+    | x < l    = Histograma l u (actualizarElem 0 (+1) lista)       -- por debajo del rango, outliers inferiores
+    | x >= u   = Histograma l u (actualizarElem (length lista - 1) (+1) lista)  -- el ultimo casillero es para outliers por encima del rango
+    |otherwise = Histograma l u (actualizarElem indice (+1) lista)   -- dentro del rango
   where
     indice = 1 + floor ((x - l) / ancho)  -- usamos la posicion 0 para outliers inferiores, asi que el primer indice es 1
     ancho = (u - l) / fromIntegral (length lista - 2)  -- restamos 2 porque quitamos los valores extremos
     
+
+
+
+
 histograma :: Int -> (Float, Float) -> [Float] -> Histograma
-histograma casilleros rango valores = foldr agregar (vacio casilleros rango) valores --Usamos vacio para obtener un histograma vacio con el rango indicado. Luego usamos foldr para recorrer la lista de derecha a izquierda e ir aplicando la funcion agregar
+histograma casilleros rango  = foldr agregar (vacio casilleros rango)  --Usamos vacio para obtener un histograma vacio con el rango indicado. Luego usamos foldr para recorrer la lista de derecha a izquierda e ir aplicando la funcion agregar
+--usamos aplicación parcial para 'valores'.
 
 -- | Un `Casillero` representa un casillero del histograma con sus límites, cantidad y porcentaje.
 -- Invariante: Sea @Casillero m1 m2 c p@ entonces @m1 < m2@, @c >= 0@, @0 <= p <= 100@
@@ -84,8 +88,16 @@ casilleros (Histograma valorMinimo valorMaximo valores) =
     total = fromIntegral (sum valores) --sumamos todos los valores para despues calcular porcentajes
     casillerosEnRango = length valores - 2 --esta es la cantidad de valores que estan en rango (no son outliers)
 
-    limitesInferiores = [-1/0] ++ [valorMinimo + anchoCasillero * fromIntegral i | i <- [0..casillerosEnRango-1]] ++ [valorMaximo] --calculamos el limite inferior de cada casillero, comenzando en -inf 
-    limitesSuperiores = [valorMinimo] ++ [valorMinimo + anchoCasillero * fromIntegral i | i <- [1..casillerosEnRango]] ++ [1/0] --calculamos el limite superior de cada uno, claramente el primer limite superior (despues de -inf, que es donde caen los errores) es el primer valor minimo. Terminamos con +inf, que son valores mayores al maximo
+    limitesInferiores = [infinitoNegativo] ++ [valorMinimo + anchoCasillero * fromIntegral i | i <- [0..casillerosEnRango-1]] ++ [valorMaximo] --calculamos el limite inferior de cada casillero, comenzando en -inf 
+    limitesSuperiores = [valorMinimo] ++ [valorMinimo + anchoCasillero * fromIntegral i | i <- [1..casillerosEnRango]] ++ [infinitoPositivo] --calculamos el limite superior de cada uno, claramente el primer limite superior (despues de -inf, que es donde caen los errores) es el primer valor minimo. Terminamos con +inf, que son valores mayores al maximo
 
     porcentajes = if total == 0 then replicate (length valores) 0.0 --si no hay elementos todos los porcentajes son claramente 0
                   else  map (\cantidadElems -> fromIntegral cantidadElems / total * 100) valores --porcentaje que representa cada casillero con respecto al total de elementos del histograma
+    --en util.hs estan definidos los infinitos, asi que es innecesario poner 1/0 y -(1/0) , simplemente ponemos  "infinitoPositivo" y "infinitoNegativo"
+    {-
+    infinitoPositivo :: Float
+    infinitoPositivo = 1 / 0
+
+    infinitoNegativo :: Float
+    infinitoNegativo = -(1 / 0)
+    -}

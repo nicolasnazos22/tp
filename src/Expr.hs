@@ -47,12 +47,20 @@ foldExpr fConst fRango fSuma fResta fMult fDiv expresion = case expresion of
       recr = foldExpr fConst fRango fSuma fResta fMult fDiv --esquema de recursividad estructural de expr
 -- | Evaluar expresiones dado un generador de números aleatorios
 eval :: Expr -> G Float
-eval = foldExpr (\x -> (\g -> (x, g))) --solo necesitamos recibir los resultados recursivos, no necesitamos acceso a subestructuras                   
-                (\l u -> dameUno (l, u))     
-                (\g1 g2 -> combinarGeneradores (+) g1 g2)      --para evitar codigo repetitivo agrupamos codigo en una funcion auxiliar         
-                (\g1 g2 -> combinarGeneradores (-) g1 g2)          
-                (\g1 g2 -> combinarGeneradores (*) g1 g2)              
-                (\g1 g2 -> combinarGeneradores(/) g1 g2)               
+--la "(,)" es una funcion y es de tipo "a -> b -> (a, b)" por lo tanto es innecesario poner esto "(\x -> (\g -> (x, g)))"
+eval = foldExpr (,) --solo necesitamos recibir los resultados recursivos, no necesitamos acceso a subestructuras                   
+                --(\l u -> dameUno (l, u))     
+                --(\g1 g2 -> combinarGeneradores (+) g1 g2)      --para evitar codigo repetitivo agrupamos codigo en una funcion auxiliar         
+                --(\g1 g2 -> combinarGeneradores (-) g1 g2)          
+                --(\g1 g2 -> combinarGeneradores (*) g1 g2)              
+                --(\g1 g2 -> combinarGeneradores (/) g1 g2)
+                 --Y EN VEZ DE HACERLO ASI LO HACEMOS ASI:
+                (curry dameUno)
+                (combinarGeneradores (+)) --usamos  aplicación parcial en los casos recursivos, evitando la eta-expansión.
+                (combinarGeneradores (-))
+                (combinarGeneradores (*))
+                (combinarGeneradores (/))
+                
                 
 -- Combina dos generadores de números aleatorios usando una operación binaria.
 -- generamos un primer valor usando g1 y el gI (generador inicial), despues generamos un segundo valor con g2 usando el generador resultante de g1 gI. Devolvemos el valor resultante y el nuevo generador.
@@ -76,7 +84,11 @@ armarHistograma m n f g = generarHistograma (muestra f n g)
 -- devuelve un histograma con @m@ casilleros y rango calculado con @rango95@ para abarcar el 95% de confianza de los valores.
 -- @n@ debe ser mayor que 0.
 evalHistograma :: Int -> Int -> Expr -> G Histograma
-evalHistograma m n expr gI = armarHistograma m n (eval expr) gI
+evalHistograma m n expr = armarHistograma m n (eval expr)
+--usamos aplicación parcial para el 'gI'.
+
+ 
+
 
 --Cada evaluacion produce un nuevo numero aleatorio
 --Mediante armarHistograma entonces construimos un histograma de m casilleros usando las n muestras obtenidas previamente con el generador gI.
@@ -97,23 +109,41 @@ mostrar :: Expr -> String
 mostrar = recrExpr 
     show
     (\low high -> show low ++ "~" ++ show high) -- rango no lleva paréntesis
-    (\e1 s1 e2 s2 ->
-        maybeParen (esMultODiv e1) s1 
+
+
+    (\e1 s1 e2 s2 -> maybeParen (es [CEMult, CEDiv] e1) s1 --agregamos los dos casos CEMult, CEDiv / es similar a como lo habiamos hecho antes, pero ahora en vez de hacer casos por separados lo hacemos todos con "es", si esta en la "lista" CEMult, CEDiv es true similar/la misma logica que el case de abajo
+                                                                                                    {-
+                                                                                                        esSumaOResta e = case constructor e of
+                                                                                                            CESuma  -> True
+                                                                                                            CEResta -> True
+                                                                                                            _       -> False
+                                                                                                    -}
         ++ " + "
-        ++ maybeParen (esMultODiv e2 || esRango e2) s2) 
+        ++ maybeParen (es [CEDiv, CEMult, CERango] e2) s2) 
+    
     (\e1 s1 e2 s2 ->
-        maybeParen (esResta e1 || esMultODiv e1) s1 
+        maybeParen (es [CEResta, CEMult, CEDiv] e1) s1 
         ++ " - "
-        ++ maybeParen (esResta e2) s2)
+        ++ maybeParen (es [CEResta] e2) s2)
+
+
     (\e1 s1 e2 s2 ->
-        maybeParen (esSumaOResta e1) s1
+        maybeParen (es [CESuma, CEResta] e1) s1
         ++ " * "
-        ++ maybeParen (esSumaOResta e2) s2)
+        ++ maybeParen (es [CESuma, CEResta] e2) s2)
+
+
+
     (\e1 s1 e2 s2 ->
-        maybeParen (esSumaOResta e1) s1 
+        maybeParen (es [CESuma, CEResta] e1) s1 
         ++ " / "
-        ++ maybeParen (esSumaOResta e2 || esMultODiv e2) s2)
+        ++ maybeParen (es [CESuma, CEResta, CEMult, CEDiv] e2) s2)
   where
+    -- 
+    es :: [ConstructorExpr] -> Expr -> Bool
+    es constructores expr =  (elem (constructor expr) constructores) -- con elem nos fijamos si expr esta en la lista constructores, si no esta FALSE
+
+{-
     -- 
     esSumaOResta e = case constructor e of
         CESuma  -> True
@@ -133,9 +163,14 @@ mostrar = recrExpr
         CEResta -> True
         _       -> False
 
+-}
 
 data ConstructorExpr = CEConst | CERango | CESuma | CEResta | CEMult | CEDiv
   deriving (Show, Eq)
+
+
+-------------------------------
+
 
 -- | Indica qué constructor fue usado para crear la expresión.
 constructor :: Expr -> ConstructorExpr
